@@ -37,7 +37,7 @@ MonoBehaviour:
   _dashDuration: 0.2
   _groundDashCooldown: 0.35
   _airDashEnabled: 1
-  _slamEnabled: 1
+  _slamEnabled: 0
   _slamSpeed: 35
   _slamJumpBufferTime: 0.25
   _slamPowerWindow: 0.15
