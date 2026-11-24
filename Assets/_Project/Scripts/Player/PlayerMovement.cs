@@ -60,6 +60,7 @@ namespace Roguelike.Player
         private bool _wallJumpAvailable = true;
 
         private bool _dashing;
+        private bool _dashFromGround;
         private Vector3 _dashDirection;
         private float _dashTimeRemaining;
         private float _dashCooldownRemaining;
@@ -96,6 +97,9 @@ namespace Roguelike.Player
         /// <summary>Adds to current velocity (knockback, jump pads). Upward pushes leave the ground.</summary>
         public void AddVelocity(Vector3 delta)
         {
+            // Knockback interrupts a dash or slam; otherwise their fixed velocity would overwrite it next frame.
+            CancelDash();
+            _slamming = false;
             _velocity += delta;
             if (delta.y > 0f)
             {
@@ -106,7 +110,7 @@ namespace Roguelike.Player
         /// <summary>Replaces velocity entirely and cancels dash/slam (launchers, explosions).</summary>
         public void Launch(Vector3 velocity)
         {
-            _dashing = false;
+            CancelDash();
             _slamming = false;
             _velocity = velocity;
             LaunchAirborne();
@@ -129,7 +133,7 @@ namespace Roguelike.Player
             transform.position = position;
             _controller.enabled = true;
             _velocity = Vector3.zero;
-            _dashing = false;
+            CancelDash();
             _slamming = false;
         }
 
@@ -183,6 +187,10 @@ namespace Roguelike.Player
 
             TickTimers(dt);
 
+            // Landing has to be handled before input: a held Jump re-jumps this frame, and doing that
+            // first would skip the landing (no ability refill, no Landed event).
+            RefreshGroundState();
+
             if (Pressed(_jumpAction) || (_definition.AutoJumpWhileHeld && Held(_jumpAction) && _grounded))
             {
                 TryJump();
@@ -208,7 +216,7 @@ namespace Roguelike.Player
             _slamPowerRemaining = Mathf.Max(0f, _slamPowerRemaining - dt);
         }
 
-        private void Simulate(float dt)
+        private void RefreshGroundState()
         {
             if (_grounded)
             {
@@ -230,7 +238,10 @@ namespace Roguelike.Player
                     _velocity.y = 0f;
                 }
             }
+        }
 
+        private void Simulate(float dt)
+        {
             if (_dashing)
             {
                 TickDash(dt);
@@ -370,10 +381,27 @@ namespace Roguelike.Player
 
         private void TryJump()
         {
+            // Already launched this frame (e.g. a slam jump fired on landing): one jump per frame.
+            if (_forceAirborne)
+            {
+                return;
+            }
+
             if (_slamming)
             {
                 // Queue it: the slam turns into a slam jump if it lands soon.
                 _slamJumpBufferRemaining = _definition.SlamJumpBufferTime;
+                return;
+            }
+
+            // Jumping out of a dash that started on the ground is a normal jump that keeps the dash's speed,
+            // as long as the floor is still under you. Double jump stays available for later.
+            if (_dashing && _dashFromGround && FindGroundBelow(_controller.stepOffset, out _, out _))
+            {
+                CancelDash();
+                _velocity.y = _definition.JumpSpeed;
+                LaunchAirborne();
+                Jumped?.Invoke();
                 return;
             }
 
@@ -389,7 +417,7 @@ namespace Roguelike.Player
                     bool fromDash = _dashing;
 
                     // Cancelling the dash keeps its full speed: this is the dash-jump.
-                    _dashing = false;
+                    CancelDash();
                     _doubleJumpAvailable = false;
                     _airDashAvailable = true;
                     _velocity.y = _definition.JumpSpeed;
@@ -397,15 +425,6 @@ namespace Roguelike.Player
                     DoubleJumped?.Invoke(fromDash);
                 }
 
-                return;
-            }
-
-            if (_dashing)
-            {
-                _dashing = false;
-                _velocity.y = _definition.JumpSpeed;
-                LaunchAirborne();
-                Jumped?.Invoke();
                 return;
             }
 
@@ -440,7 +459,7 @@ namespace Roguelike.Player
 
                 _velocity = direction * _definition.DashWallJumpSpeed;
                 _velocity.y += _definition.DashWallJumpUpSpeed;
-                _dashing = false;
+                CancelDash();
             }
             else
             {
@@ -518,6 +537,7 @@ namespace Roguelike.Player
                 : Flatten(transform.forward).normalized;
 
             _dashing = true;
+            _dashFromGround = grounded;
             _slamming = false;
             _dashTimeRemaining = _definition.DashDuration;
             _velocity = _dashDirection * _definition.DashSpeed;
@@ -526,19 +546,39 @@ namespace Roguelike.Player
 
         private void TickDash(float dt)
         {
+            // No gravity and no steering during a dash. The last frame only covers the time that's left,
+            // so the dash is the same distance at any frame rate.
+            float step = Mathf.Min(dt, _dashTimeRemaining);
+            _velocity = _dashDirection * _definition.DashSpeed;
+            Move(_velocity * step);
+            _dashTimeRemaining -= step;
+
             if (_dashTimeRemaining <= 0f)
             {
                 // Ending normally drops you back to walk speed. Jumping out of the dash keeps full speed.
                 _dashing = false;
                 _velocity = _dashDirection * _definition.WalkSpeed;
+
+                // A ground dash that ends over the floor never really left it, so it isn't a landing.
+                if (_dashFromGround && TrySnapDown(_controller.stepOffset))
+                {
+                    _grounded = true;
+                }
+
                 DashEnded?.Invoke();
+            }
+        }
+
+        /// <summary>Stops a dash early and keeps its current velocity.</summary>
+        private void CancelDash()
+        {
+            if (!_dashing)
+            {
                 return;
             }
 
-            // No gravity and no steering during a dash.
-            _velocity = _dashDirection * _definition.DashSpeed;
-            Move(_velocity * dt);
-            _dashTimeRemaining -= dt;
+            _dashing = false;
+            DashEnded?.Invoke();
         }
 
         // ------------------------------------------------------------------ Ground slam
@@ -550,7 +590,7 @@ namespace Roguelike.Player
                 return;
             }
 
-            _dashing = false;
+            CancelDash();
             _slamming = true;
             _slamTime = 0f;
             _velocity = Vector3.down * _definition.SlamSpeed;
@@ -623,7 +663,7 @@ namespace Roguelike.Player
             }
 
             // Walking off a small step: snap down to it instead of falling.
-            if (!grounded && wasGrounded && !_forceAirborne && delta.y <= 0f && TrySnapDown())
+            if (!grounded && wasGrounded && !_forceAirborne && delta.y <= 0f && TrySnapDown(_controller.stepOffset))
             {
                 grounded = true;
             }
@@ -681,35 +721,44 @@ namespace Roguelike.Player
             }
         }
 
-        private bool TrySnapDown()
+        private bool TrySnapDown(float maxDistance)
         {
-            float radius = _controller.radius;
-            float castRadius = Mathf.Max(0.01f, radius - _controller.skinWidth);
-            Vector3 origin = BottomSphereCenter;
-            float distance = _controller.stepOffset + _controller.skinWidth;
-
-            int count = Physics.SphereCastNonAlloc(origin, castRadius, Vector3.down, _groundHits, distance,
-                _environmentMask, QueryTriggerInteraction.Ignore);
-
-            float best = float.MaxValue;
-            for (int i = 0; i < count; i++)
-            {
-                RaycastHit hit = _groundHits[i];
-                if (hit.distance <= 0f || IsSelf(hit.collider) || hit.normal.y < _walkableNormalY)
-                {
-                    continue;
-                }
-
-                best = Mathf.Min(best, hit.distance);
-            }
-
-            if (best == float.MaxValue)
+            if (!FindGroundBelow(maxDistance, out float distance, out Vector3 normal))
             {
                 return false;
             }
 
-            _controller.Move(Vector3.down * best);
+            _controller.Move(Vector3.down * distance);
             return true;
+        }
+
+        /// <summary>Looks for walkable floor up to <paramref name="maxDistance"/> below the capsule.</summary>
+        private bool FindGroundBelow(float maxDistance, out float distance, out Vector3 normal)
+        {
+            float radius = _controller.radius;
+            float castRadius = Mathf.Max(0.01f, radius - _controller.skinWidth);
+            Vector3 origin = BottomSphereCenter;
+            float castDistance = maxDistance + _controller.skinWidth;
+
+            int count = Physics.SphereCastNonAlloc(origin, castRadius, Vector3.down, _groundHits, castDistance,
+                _environmentMask, QueryTriggerInteraction.Ignore);
+
+            distance = float.MaxValue;
+            normal = Vector3.up;
+            for (int i = 0; i < count; i++)
+            {
+                RaycastHit hit = _groundHits[i];
+                if (hit.distance <= 0f || IsSelf(hit.collider) || hit.normal.y < _walkableNormalY
+                    || hit.distance >= distance)
+                {
+                    continue;
+                }
+
+                distance = hit.distance;
+                normal = hit.normal;
+            }
+
+            return distance < float.MaxValue;
         }
 
         private static Vector3 DeflectAlongSurface(Vector3 velocity, Vector3 normal)
