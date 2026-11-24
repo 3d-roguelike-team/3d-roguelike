@@ -513,17 +513,6 @@
                     "action": "Dash",
                     "isComposite": false,
                     "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "8b71c106-6922-45ac-abce-21a51fe6b29e",
-                    "path": "<Keyboard>/leftCtrl",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Slam",
-                    "isComposite": false,
-                    "isPartOfComposite": false
                 }
             ]
         },
