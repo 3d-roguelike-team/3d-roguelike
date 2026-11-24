@@ -1,0 +1,15 @@
+# Replace @handles with real GitHub usernames, then uncomment.
+# GitHub auto-requests these reviewers on PRs touching the paths.
+
+# /Assets/_Project/Scripts/Core/       @lead @teammate2
+# /Assets/_Project/Scripts/Player/     @owner
+# /Assets/_Project/Scripts/Combat/     @owner
+# /Assets/_Project/Scripts/Enemies/    @owner
+# /Assets/_Project/Scripts/Level/      @owner
+# /Assets/_Project/Scripts/Run/        @owner
+# /Assets/_Project/Scripts/Meta/       @owner
+# /Assets/_Project/Scripts/UI/         @owner
+# /Assets/_Project/Scenes/*.unity      @lead
+# /Packages/                           @lead
+# /ProjectSettings/                    @lead
+# /ARCHITECTURE.md                     @lead
