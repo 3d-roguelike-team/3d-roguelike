@@ -9,7 +9,7 @@ A **first-person, techno-medieval roguelike shooter**. You fight through procedu
 
 - **Genre:** First-person shooter roguelike ("shoot 'em up")
 - **Tone / setting:** Techno-medieval. Medieval architecture and characters with robotic and technological parts.
-- **Engine:** Unity **6000.3.29f1**
+- **Engine:** Unity **6000.5.9f1**
 - **Team:** 5 developers
 
 ### Design pillars

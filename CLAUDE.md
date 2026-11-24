@@ -5,7 +5,7 @@ Instructions for AI coding assistants (Claude Code, Copilot, Cursor, etc.) worki
 
 ## Project
 - First-person techno-medieval roguelike shooter. Design: [DESIGN.md](DESIGN.md)
-- **Unity 6000.3.29f1**, C#, URP, Input System, AI Navigation
+- **Unity 6000.5.9f1**, C#, URP, Input System, AI Navigation
 - Architecture contract: [ARCHITECTURE.md](ARCHITECTURE.md). **Read it before writing code.**
 - Team workflow: [CONTRIBUTING.md](CONTRIBUTING.md)
 

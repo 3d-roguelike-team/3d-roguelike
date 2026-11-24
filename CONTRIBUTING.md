@@ -4,7 +4,7 @@ How 5 of us work in one Unity repo without breaking each other's work.
 
 ## 1. One-time setup (everyone)
 
-1. Install **Unity 6000.3.29f1** exactly, using Unity Hub. Don't open the project in a different version. It silently upgrades and rewrites files.
+1. Install **Unity 6000.5.9f1** exactly, using Unity Hub. Don't open the project in a different version. It silently upgrades and rewrites files.
 2. Install **Git LFS** and run it once:
    ```sh
    git lfs install
@@ -13,7 +13,7 @@ How 5 of us work in one Unity repo without breaking each other's work.
    ```sh
    # Windows (adjust path to your Unity install)
    git config merge.unityyamlmerge.name "Unity SmartMerge"
-   git config merge.unityyamlmerge.driver "'C:/Program Files/Unity/Hub/Editor/6000.3.29f1/Editor/Data/Tools/UnityYAMLMerge.exe' merge -p %O %B %A %A"
+   git config merge.unityyamlmerge.driver "'C:/Program Files/Unity/Hub/Editor/6000.5.9f1/Editor/Data/Tools/UnityYAMLMerge.exe' merge -p %O %B %A %A"
    git config merge.unityyamlmerge.recursive binary
    ```
    (`.gitattributes` already routes `.unity`, `.prefab` and `.asset` files to this driver.)
