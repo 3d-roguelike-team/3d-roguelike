@@ -21,12 +21,13 @@ namespace Roguelike.Player
         [Header("References")]
         [Tooltip("The first-person camera, a child of the player.")]
         [SerializeField] private Camera _camera;
-        [Tooltip("Optional. Makes the lean stronger while dashing.")]
+        [Tooltip("Optional. Lowers the camera while sliding and strengthens the lean while dashing.")]
         [SerializeField] private PlayerMovement _movement;
         [SerializeField] private bool _lockCursor = true;
 
         private float _pitch;
         private float _roll;
+        private float _standingEyeHeight;
         private float _lastAspect = -1f;
 
         /// <summary>Turn off to freeze the view (menus, shop UI).</summary>
@@ -43,6 +44,7 @@ namespace Roguelike.Player
 
             float x = _camera.transform.localEulerAngles.x;
             _pitch = x > 180f ? x - 360f : x;
+            _standingEyeHeight = _camera.transform.localPosition.y;
         }
 
         private void OnEnable()
@@ -84,7 +86,18 @@ namespace Roguelike.Player
             }
 
             UpdateLean(Time.deltaTime);
+            UpdateEyeHeight(Time.deltaTime);
             _camera.transform.localRotation = Quaternion.Euler(_pitch, 0f, _roll);
+        }
+
+        private void UpdateEyeHeight(float dt)
+        {
+            bool lowered = _movement != null && _movement.IsLowered;
+            float target = lowered ? _standingEyeHeight - _definition.SlideEyeDrop : _standingEyeHeight;
+
+            Vector3 position = _camera.transform.localPosition;
+            position.y = Mathf.MoveTowards(position.y, target, _definition.EyeHeightSpeed * dt);
+            _camera.transform.localPosition = position;
         }
 
         private void UpdateLean(float dt)

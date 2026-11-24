@@ -17,6 +17,12 @@ namespace Roguelike.Player
         [Tooltip("Horizontal field of view. Converted to Unity's vertical FOV for the current screen shape.")]
         [SerializeField, Range(30f, 170f)] private float _horizontalFov = 119f;
 
+        [Header("Slide")]
+        [Tooltip("How far the camera drops while sliding (or crouched under something after a slide).")]
+        [SerializeField, Min(0f)] private float _slideEyeDrop = 0.27f;
+        [Tooltip("How fast the camera moves to and from the slide height, in meters per second.")]
+        [SerializeField, Min(0f)] private float _eyeHeightSpeed = 2.5f;
+
         [Header("Strafe Lean")]
         [Tooltip("Camera roll in degrees while strafing.")]
         [SerializeField] private float _leanRoll = 1f;
@@ -31,6 +37,8 @@ namespace Roguelike.Player
         public float MinPitch => _minPitch;
         public float MaxPitch => _maxPitch;
         public float HorizontalFov => _horizontalFov;
+        public float SlideEyeDrop => _slideEyeDrop;
+        public float EyeHeightSpeed => _eyeHeightSpeed;
         public float LeanRoll => _leanRoll;
         public float DashLeanRoll => _dashLeanRoll;
         public float LeanResponse => _leanResponse;

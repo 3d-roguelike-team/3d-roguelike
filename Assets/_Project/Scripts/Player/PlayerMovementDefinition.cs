@@ -58,7 +58,37 @@ namespace Roguelike.Player
         [SerializeField, Min(0f)] private float _groundDashCooldown = 0.35f;
         [SerializeField] private bool _airDashEnabled = true;
 
-        [Header("Ground Slam")]
+        [Header("Slide")]
+        [SerializeField] private bool _slideEnabled = true;
+        [Tooltip("Starting a slide slower than this kicks you up to it (once per Kick Cooldown).")]
+        [SerializeField, Min(0f)] private float _slideStartSpeed = 12f;
+        [Tooltip("Seconds before another slide can give the start kick. Stops tap-sliding from beating walk speed.")]
+        [SerializeField, Min(0f)] private float _slideKickCooldown = 1f;
+        [Tooltip("Added on top of dash speed when you slide straight out of a dash.")]
+        [SerializeField, Min(0f)] private float _slideDashBoostSpeed = 3f;
+        [Tooltip("Flat speed lost per second while sliding.")]
+        [SerializeField, Min(0f)] private float _slideFriction = 3f;
+        [Tooltip("Extra speed lost per second for each m/s you're going. Fast slides bleed speed faster.")]
+        [SerializeField, Min(0f)] private float _slideDrag = 0.35f;
+        [Tooltip("How strongly slopes speed you up (downhill) or slow you down (uphill). 1 = normal gravity.")]
+        [SerializeField, Min(0f)] private float _slideGravityScale = 2f;
+        [Tooltip("How fast you can steer the slide with WASD, in degrees per second.")]
+        [SerializeField, Min(0f)] private float _slideSteerDegreesPerSecond = 90f;
+        [Tooltip("The slide ends when it slows below this.")]
+        [SerializeField, Min(0f)] private float _slideEndSpeed = 6f;
+        [Tooltip("Top slide speed, mostly reached going down steep ramps.")]
+        [SerializeField, Min(0f)] private float _slideMaxSpeed = 30f;
+        [Tooltip("Pressing Slide this close above the floor still starts a slide. Lets you slide straight out of a ground dash.")]
+        [SerializeField, Min(0f)] private float _slideEntryGroundSnap = 0.08f;
+        [Tooltip("Capsule height while sliding. Can't go below twice the CharacterController radius.")]
+        [SerializeField, Min(0.1f)] private float _slideHeight = 1.05f;
+        [Tooltip("0 = no time limit (the slide still ends when it slows down).")]
+        [SerializeField, Min(0f)] private float _slideMaxDuration = 0f;
+        [SerializeField, Min(0f)] private float _slideCooldown = 0f;
+        [Tooltip("Holding Slide while you land starts a slide on touchdown.")]
+        [SerializeField] private bool _slideOnLandWhileHeld = true;
+
+        [Header("Ground Slam (unbound: Utility candidate)")]
         [SerializeField] private bool _slamEnabled = true;
         [SerializeField, Min(0f)] private float _slamSpeed = 35f;
         [Tooltip("Pressing Jump this long before a slam lands launches a slam jump on impact.")]
@@ -99,6 +129,22 @@ namespace Roguelike.Player
         public float DashSpeed => _dashDistance / _dashDuration;
         public float GroundDashCooldown => _groundDashCooldown;
         public bool AirDashEnabled => _airDashEnabled;
+
+        public bool SlideEnabled => _slideEnabled;
+        public float SlideStartSpeed => _slideStartSpeed;
+        public float SlideKickCooldown => _slideKickCooldown;
+        public float SlideDashBoostSpeed => _slideDashBoostSpeed;
+        public float SlideFriction => _slideFriction;
+        public float SlideDrag => _slideDrag;
+        public float SlideGravityScale => _slideGravityScale;
+        public float SlideSteerDegreesPerSecond => _slideSteerDegreesPerSecond;
+        public float SlideEndSpeed => _slideEndSpeed;
+        public float SlideMaxSpeed => _slideMaxSpeed;
+        public float SlideEntryGroundSnap => _slideEntryGroundSnap;
+        public float SlideHeight => _slideHeight;
+        public float SlideMaxDuration => _slideMaxDuration;
+        public float SlideCooldown => _slideCooldown;
+        public bool SlideOnLandWhileHeld => _slideOnLandWhileHeld;
 
         public bool SlamEnabled => _slamEnabled;
         public float SlamSpeed => _slamSpeed;
