@@ -16,7 +16,7 @@ A **first-person, techno-medieval roguelike shooter**. You fight through procedu
 1. **Pressure through time.** The timer always pushes you forward. Taking it slow has a cost.
 2. **Your gun is your build.** Attachments change how you shoot *and* your stats (health, speed, damage, …).
 3. **Clean slate, growing pool.** Your power resets every run, so every run starts equal. The only thing that carries over is **unlocks**: new items that can now appear. They add variety, not strength.
-4. **Movement is a weapon.** Sliding and sprinting are central to staying alive, not extras.
+4. **Movement is a weapon.** Sliding, dashing and jumping are central to staying alive, not extras.
 
 ---
 
@@ -44,8 +44,8 @@ Start Run ─► Enter Stage ─► Clear Room ─► Pick Doorway ─► Clear 
 ### 3.1 Controller
 | Action | Input (default) | Notes |
 |---|---|---|
-| Move | WASD | Walk is the default speed |
-| Sprint | Shift (**toggle**) | Not hold-to-sprint |
+| Move | WASD | Base movement is already fast. No sprint (#7) |
+| Dash | Shift | Movement ability, see 3.2 |
 | Jump | Space | |
 | Slide | Left Ctrl | Movement ability, see 3.2 |
 | Look | Mouse | First-person camera |
@@ -55,13 +55,17 @@ Start Run ─► Enter Stage ─► Clear Room ─► Pick Doorway ─► Clear 
 
 All input goes through **Unity's Input System package** using one shared `InputActions` asset (see ARCHITECTURE.md).
 
-### 3.2 Movement ability: Slide
-- Starts from sprint (TBD: or from any movement?).
-- Keeps or boosts momentum and lowers the player's hitbox.
-- Tunables: duration, speed multiplier, cooldown. **All TBD.**
+### 3.2 Movement abilities
+Decided in #7. All tuning lives in `PlayerMovementDefinition`, and each ability has an on/off checkbox there.
+
+- **Slide (Left Ctrl):** works from any movement. Keeps or boosts momentum, can be steered, speeds up downhill and slows uphill, and lowers the player's hitbox. Duration and cooldown exist as tunables (currently off).
+- **Dash (Shift):** a short, fast burst in the held direction. Ground cooldown, one dash in the air (refilled by double jump and wall jump). Jumping out of a dash keeps its speed.
+- **Double jump:** one extra jump in the air.
+- **Wall jump:** push off a nearby wall, once per airtime.
+- **Ground slam:** in the code but **disabled**. Utility candidate (see 3.3).
 
 ### 3.3 Utility
-- **TBD.** Candidates: grenade, dash, shield, grapple.
+- **TBD.** Candidates: grenade, shield, grapple, ground slam. (Dash is now a movement ability, see 3.2.)
 
 ### 3.4 Base stats
 Every stat lives in the shared stat system so attachments can change any of them.
@@ -69,8 +73,7 @@ Every stat lives in the shared stat system so attachments can change any of them
 | Stat | Base | Notes |
 |---|---|---|
 | MaxHealth | TBD | |
-| MoveSpeed | TBD | Walk speed. Sprint is a multiplier. |
-| SprintMultiplier | TBD | |
+| MoveSpeed | TBD | Base movement speed (no sprint) |
 | Damage | TBD | Per shot |
 | FireRate | TBD | Shots per second |
 | MagazineSize | TBD | Reloading? **TBD** |
@@ -184,7 +187,7 @@ This follows the usual roguelike model: **your power resets, the item pool grows
 2. How many rooms per stage? Is the game endless, or does it have a final stage or boss?
 3. What unlocks an item permanently? (See 6.4.)
 4. What is the difficulty formula: how much do time and stages each count?
-5. Can you slide without sprinting?
+5. ~~Can you slide without sprinting?~~ Resolved below.
 6. Do we have reloading and ammo, or infinite ammo?
 7. Do duplicate attachments stack? How many slots?
 8. Can you backtrack out of a dead end, or is it a trap?
@@ -192,4 +195,6 @@ This follows the usual roguelike model: **your power resets, the item pool grows
 **Resolved**
 - ~~Permanent unlocks vs. full wipe~~ → The run's power wipes fully, and unlocks only expand the item pool (6.4, ADR 0002).
 - ~~Slide input~~ → Left Ctrl.
+- ~~Can you slide without sprinting?~~ → Yes. There is no sprint; slide works from any movement (#7).
+- ~~Which extra movement abilities stay~~ → Dash (Shift), double jump and wall jump stay. Ground slam is disabled for now (#7).
 - ~~Continuous spawning vs. waves~~ → A set group of enemies per room, chosen on entry from difficulty (time + stages). Cleared when all are dead (6.3).
