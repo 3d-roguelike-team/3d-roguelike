@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b93daddc3094d64ea455055fdf54d61, type: 3}
+  m_Name: PlayerMovementDefinition
+  m_EditorClassIdentifier: Roguelike.Player::Roguelike.Player.PlayerMovementDefinition
+  _walkSpeed: 7.5
+  _maxAcceleration: 80
+  _groundFriction: 8
+  _brakingDeceleration: 20.48
+  _brakingFrictionFactor: 2
+  _brakeToStopSpeed: 0.1
+  _groundStickSpeed: 0.5
+  _airControl: 1
+  _airLateralFriction: 0
+  _gravity: 15.68
+  _terminalFallSpeed: 40
+  _hardLandingSpeed: 20
+  _jumpSpeed: 8
+  _autoJumpWhileHeld: 1
+  _doubleJumpEnabled: 1
+  _wallJumpEnabled: 1
+  _wallCheckDistance: 0.96
+  _wallJumpPushSpeed: 9
+  _dashWallJumpSpeed: 22.5
+  _dashWallJumpUpSpeed: 5.333
+  _dashEnabled: 1
+  _dashDistance: 5
+  _dashDuration: 0.2
+  _groundDashCooldown: 0.35
+  _airDashEnabled: 1
+  _slamEnabled: 1
+  _slamSpeed: 35
+  _slamJumpBufferTime: 0.25
+  _slamPowerWindow: 0.15
+  _slamJumpBonusSpeed: 0.5
+  _slamJumpMinimumPower: 1
