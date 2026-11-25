@@ -1,0 +1,17 @@
+{
+    "name": "Roguelike.Combat",
+    "rootNamespace": "Roguelike.Combat",
+    "references": [
+        "GUID:4eaf9772c63b6764880080b71441c19c",
+        "GUID:75469ad4d38634e559750d17036d5f7c"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

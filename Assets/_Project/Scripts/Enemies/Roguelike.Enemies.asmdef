@@ -1,0 +1,16 @@
+{
+    "name": "Roguelike.Enemies",
+    "rootNamespace": "Roguelike.Enemies",
+    "references": [
+        "GUID:4eaf9772c63b6764880080b71441c19c"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
