@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ff856bfdccd70940b5b93883a5d0819, type: 3}
+  m_Name: PlayerLookDefinition
+  m_EditorClassIdentifier: Roguelike.Player::Roguelike.Player.PlayerLookDefinition
+  _sensitivity: 0.219
+  _invertY: 0
+  _minPitch: -89
+  _maxPitch: 89
+  _horizontalFov: 119
+  _leanRoll: 1
+  _dashLeanRoll: 3.75
+  _leanResponse: 9
+  _dashLeanResponse: 16
