@@ -72,14 +72,25 @@ Every stat lives in the shared stat system so attachments can change any of them
 
 | Stat | Base | Notes |
 |---|---|---|
-| MaxHealth | TBD | |
-| MoveSpeed | TBD | Base movement speed (no sprint) |
+| MaxHealth | TBD |
+| MoveSpeed | TBD | Base movement speed|
 | Damage | TBD | Per shot |
 | FireRate | TBD | Shots per second |
-| MagazineSize | TBD | Reloading? **TBD** |
-| ReloadTime | TBD | |
-| CritChance | TBD | Optional |
+| MagazineSize | TBD |
+| ReloadTime | TBD |
+| CritChance | TBD |
 
+### 3.5 Stat Modifiers
+Each stat can be modified (by attachments and stats)
+There are three types of modifiers:
+Applied in order
+1: Flat: These are flat values added to the base value of each stat
+2: Percent Add: Added percentage that adds the percent value to sum of base and flat (+100% on sum of 30 = 60, +200% of 30 = 90, etc)
+3: Percent Mult: Multiplies the final stat value
+
+The final calculation for each stat: [Base + sum(Flat)] * [1 + sum(PercentAdd)] * (1 + PercentMult)
+Example: Base = 100, Flat = 50, Percent Add = 2.5, Percent Mult = 1
+(100 + 50) * (1 + 2.5) * (1 + 1) = 150 * 3.5 * 2 = 1050
 ---
 
 ## 4. Weapons & Items
