@@ -34,6 +34,6 @@ Fight through procedurally connected castle and dungeon rooms. Kit out your gun 
 | Tendie | TBD |
 | JCoding8127 | TBD |
 | DiploMatt02 | TBD |
-| fillin | TBD |
+| MSaldivar2005 (Michael Saldivar) | Enemy/gun design and implementation |
 | fillin | TBD |
 
