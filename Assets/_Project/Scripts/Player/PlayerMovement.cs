@@ -7,7 +7,7 @@ namespace Roguelike.Player
     /// <summary>
     /// First-person CharacterController movement:
     /// walk with acceleration/friction, jump, double jump, wall jump, dash,
-    /// dash-jump momentum carry, ground slam and slam jump.
+    /// dash-jump momentum carry, slide, ground slam and slam jump.
     /// Tuning lives in <see cref="PlayerMovementDefinition"/>.
     /// </summary>
     [DisallowMultipleComponent]
@@ -33,6 +33,8 @@ namespace Roguelike.Player
         [SerializeField] private InputActionReference _moveAction;
         [SerializeField] private InputActionReference _jumpAction;
         [SerializeField] private InputActionReference _dashAction;
+        [SerializeField] private InputActionReference _slideAction;
+        [Tooltip("Unbound by default. Candidate for the Utility ability.")]
         [SerializeField] private InputActionReference _slamAction;
 
         [Header("Collision")]
@@ -44,10 +46,15 @@ namespace Roguelike.Player
         private CharacterController _controller;
         private Vector3 _velocity;
         private float _walkableNormalY;
+        private float _standingHeight;
+        private Vector3 _standingCenter;
 
         private bool _grounded;
         private bool _landedPending;
         private bool _forceAirborne;
+
+        private Vector3 _groundNormal = Vector3.up;
+        private Vector3 _contactGroundNormal;
 
         private bool _collectingHits;
         private bool _hasWalkableContact;
@@ -65,6 +72,13 @@ namespace Roguelike.Player
         private float _dashTimeRemaining;
         private float _dashCooldownRemaining;
 
+        private bool _sliding;
+        private bool _lowered;
+        private Vector3 _slideDirection;
+        private float _slideElapsed;
+        private float _slideCooldownRemaining;
+        private float _slideKickCooldownRemaining;
+
         private bool _slamming;
         private float _slamTime;
         private float _slamJumpBufferRemaining;
@@ -76,6 +90,8 @@ namespace Roguelike.Player
         public event Action<Vector3, Vector3, bool> WallJumped; // (point, wallNormal, fromDash)
         public event Action<Vector3> Dashed;                  // (direction)
         public event Action DashEnded;
+        public event Action<Vector3> SlideStarted;            // (direction)
+        public event Action SlideEnded;
         public event Action SlamStarted;
         public event Action<float> SlamLanded;                // (stored jump power)
         public event Action SlamJumped;
@@ -88,6 +104,10 @@ namespace Roguelike.Player
         public Vector3 HorizontalVelocity => Flatten(_velocity);
         public bool IsGrounded => _grounded;
         public bool IsDashing => _dashing;
+        public bool IsSliding => _sliding;
+
+        /// <summary>True while the capsule is short: sliding, or still under something after a slide.</summary>
+        public bool IsLowered => _lowered;
         public bool IsSlamming => _slamming;
         public float DashCooldownRemaining => _dashCooldownRemaining;
         public bool DoubleJumpAvailable => _doubleJumpAvailable;
@@ -133,6 +153,7 @@ namespace Roguelike.Player
             transform.position = position;
             _controller.enabled = true;
             _velocity = Vector3.zero;
+            EndSlide();
             CancelDash();
             _slamming = false;
         }
@@ -155,6 +176,8 @@ namespace Roguelike.Player
         {
             _controller = GetComponent<CharacterController>();
             _walkableNormalY = Mathf.Cos(_controller.slopeLimit * Mathf.Deg2Rad);
+            _standingHeight = _controller.height;
+            _standingCenter = _controller.center;
 
             if (_definition == null)
             {
@@ -168,12 +191,14 @@ namespace Roguelike.Player
             EnableAction(_moveAction);
             EnableAction(_jumpAction);
             EnableAction(_dashAction);
+            EnableAction(_slideAction);
             EnableAction(_slamAction);
         }
 
         private void OnDisable()
         {
             _dashing = false;
+            _sliding = false;
             _slamming = false;
         }
 
@@ -201,6 +226,11 @@ namespace Roguelike.Player
                 TryDash();
             }
 
+            if (Pressed(_slideAction))
+            {
+                TryStartSlide();
+            }
+
             if (Pressed(_slamAction))
             {
                 TryStartSlam();
@@ -212,6 +242,8 @@ namespace Roguelike.Player
         private void TickTimers(float dt)
         {
             _dashCooldownRemaining = Mathf.Max(0f, _dashCooldownRemaining - dt);
+            _slideCooldownRemaining = Mathf.Max(0f, _slideCooldownRemaining - dt);
+            _slideKickCooldownRemaining = Mathf.Max(0f, _slideKickCooldownRemaining - dt);
             _slamJumpBufferRemaining = Mathf.Max(0f, _slamJumpBufferRemaining - dt);
             _slamPowerRemaining = Mathf.Max(0f, _slamPowerRemaining - dt);
         }
@@ -231,6 +263,11 @@ namespace Roguelike.Player
                 {
                     _landedPending = false;
                     HandleLanding(-_velocity.y);
+
+                    if (_definition.SlideOnLandWhileHeld && Held(_slideAction))
+                    {
+                        TryStartSlide();
+                    }
                 }
 
                 if (_velocity.y < 0f)
@@ -246,6 +283,10 @@ namespace Roguelike.Player
             {
                 TickDash(dt);
             }
+            else if (_sliding)
+            {
+                TickSlide(dt);
+            }
             else if (_slamming)
             {
                 TickSlam(dt);
@@ -253,6 +294,11 @@ namespace Roguelike.Player
             else
             {
                 TickWalkOrFall(dt);
+            }
+
+            if (_lowered && !_sliding && HasStandingRoom())
+            {
+                SetLowered(false);
             }
 
             _forceAirborne = false;
@@ -269,7 +315,7 @@ namespace Roguelike.Player
             if (grounded)
             {
                 horizontal = CalcVelocity(horizontal, wish, inputAmount, dt,
-                    _definition.GroundFriction, _definition.BrakingDeceleration);
+                    _definition.GroundFriction, _definition.BrakingDeceleration, _definition.WalkSpeed);
                 _velocity = horizontal;
 
                 Vector3 start = transform.position;
@@ -288,7 +334,7 @@ namespace Roguelike.Player
 
             Vector3 oldVelocity = _velocity;
             horizontal = CalcVelocity(horizontal, wish, inputAmount * _definition.AirControl, dt,
-                _definition.AirLateralFriction, 0f);
+                _definition.AirLateralFriction, 0f, _definition.WalkSpeed);
             _velocity.x = horizontal.x;
             _velocity.z = horizontal.z;
             _velocity.y = Mathf.Max(_velocity.y - _definition.Gravity * dt, -_definition.TerminalFallSpeed);
@@ -298,9 +344,8 @@ namespace Roguelike.Player
         }
 
         private Vector3 CalcVelocity(Vector3 horizontal, Vector3 wish, float inputAmount, float dt,
-            float friction, float brakingDeceleration)
+            float friction, float brakingDeceleration, float maxSpeed)
         {
-            float maxSpeed = _definition.WalkSpeed;
             float oldSpeed = horizontal.magnitude;
             bool hasInput = inputAmount > 0.001f && wish.sqrMagnitude > 0.001f;
             bool overMax = oldSpeed > maxSpeed + Epsilon;
@@ -310,7 +355,7 @@ namespace Roguelike.Player
                 Vector3 beforeBraking = horizontal;
                 horizontal = ApplyBraking(horizontal, dt, friction, brakingDeceleration);
 
-                // Braking from above walk speed never drops you below it while you hold forward.
+                // Braking from above max speed never drops you below it while you hold forward.
                 if (overMax && hasInput
                     && horizontal.sqrMagnitude < maxSpeed * maxSpeed
                     && Vector3.Dot(wish, beforeBraking) > 0f)
@@ -327,7 +372,7 @@ namespace Roguelike.Player
 
             if (hasInput)
             {
-                // Input can accelerate you up to walk speed, or steer you while you're faster.
+                // Input can accelerate you up to max speed, or steer you while you're faster.
                 float allowedSpeed = Mathf.Max(horizontal.magnitude, maxSpeed);
                 horizontal += wish * (_definition.MaxAcceleration * inputAmount * dt);
                 if (horizontal.magnitude > allowedSpeed && allowedSpeed > 0f)
@@ -527,6 +572,8 @@ namespace Roguelike.Player
                 return;
             }
 
+            EndSlide();
+
             // Every dash, ground or air, uses up the air dash until you land or double/wall jump.
             _airDashAvailable = false;
             _dashCooldownRemaining = _definition.GroundDashCooldown;
@@ -579,6 +626,187 @@ namespace Roguelike.Player
 
             _dashing = false;
             DashEnded?.Invoke();
+        }
+
+        // ------------------------------------------------------------------ Slide
+
+        private void TryStartSlide()
+        {
+            if (!_definition.SlideEnabled || _sliding || _slamming || _slideCooldownRemaining > 0f)
+            {
+                return;
+            }
+
+            if (!_grounded || _forceAirborne)
+            {
+                // A press just above the floor still counts, so a ground dash can go straight into a slide.
+                if (_forceAirborne || _velocity.y > 0f || !TrySnapDown(_definition.SlideEntryGroundSnap))
+                {
+                    return;
+                }
+
+                _grounded = true;
+                _velocity.y = 0f;
+            }
+
+            Vector3 horizontal = Flatten(_velocity);
+            float speed = horizontal.magnitude;
+
+            // Already faster than walking: keep your momentum's direction (WASD then steers it gradually).
+            // Slower: slide the way you're holding, else the way you're moving, else where you're facing.
+            Vector3 direction;
+            if (speed > _definition.WalkSpeed)
+            {
+                direction = horizontal;
+            }
+            else
+            {
+                direction = WishDirection();
+                if (direction.sqrMagnitude <= 0.01f)
+                {
+                    direction = speed > 1f ? horizontal : Flatten(transform.forward);
+                }
+            }
+
+            if (direction.sqrMagnitude <= Epsilon)
+            {
+                direction = Vector3.forward;
+            }
+
+            if (_dashing)
+            {
+                speed = Mathf.Max(speed, _definition.DashSpeed) + _definition.SlideDashBoostSpeed;
+            }
+            else if (speed < _definition.SlideStartSpeed && _slideKickCooldownRemaining <= 0f)
+            {
+                speed = _definition.SlideStartSpeed;
+                _slideKickCooldownRemaining = _definition.SlideKickCooldown;
+            }
+
+            // Too slow to be worth a slide (kick still on cooldown).
+            if (speed < _definition.SlideEndSpeed)
+            {
+                return;
+            }
+
+            CancelDash();
+            _sliding = true;
+            _slideElapsed = 0f;
+            _slideDirection = direction.normalized;
+            _velocity = _slideDirection * speed;
+            SetLowered(true);
+            SlideStarted?.Invoke(_slideDirection);
+        }
+
+        private void TickSlide(float dt)
+        {
+            if (!_grounded)
+            {
+                EndSlide();
+                TickWalkOrFall(dt);
+                return;
+            }
+
+            _slideElapsed += dt;
+            float maxDuration = _definition.SlideMaxDuration;
+            if (!Held(_slideAction) || (maxDuration > 0f && _slideElapsed >= maxDuration))
+            {
+                EndSlide();
+                TickWalkOrFall(dt);
+                return;
+            }
+
+            Vector3 horizontal = Flatten(_velocity);
+            float speed = horizontal.magnitude;
+            Vector3 direction = speed > Epsilon ? horizontal / speed : _slideDirection;
+
+            // WASD bends the slide's path a little. It never adds speed.
+            Vector3 wish = WishDirection();
+            if (wish.sqrMagnitude > 0.01f)
+            {
+                float maxRadians = _definition.SlideSteerDegreesPerSecond * Mathf.Deg2Rad * dt;
+                direction = Vector3.RotateTowards(direction, wish.normalized, maxRadians, 0f).normalized;
+            }
+
+            // Friction plus drag: fast slides bleed speed quicker, slow ones fade out.
+            speed = Mathf.Max(0f, speed - (_definition.SlideFriction + _definition.SlideDrag * speed) * dt);
+            horizontal = direction * speed;
+
+            // Slopes: downhill speeds you up, uphill slows you down.
+            Vector3 slopePull = Flatten(Vector3.ProjectOnPlane(
+                Vector3.down * (_definition.Gravity * _definition.SlideGravityScale), _groundNormal));
+            horizontal += slopePull * dt;
+
+            // Slopes can't push you past the top slide speed (speed you already had is kept).
+            float cap = Mathf.Max(_definition.SlideMaxSpeed, speed);
+            if (horizontal.sqrMagnitude > cap * cap)
+            {
+                horizontal = horizontal.normalized * cap;
+            }
+
+            _velocity = horizontal;
+            if (horizontal.sqrMagnitude > Epsilon)
+            {
+                _slideDirection = horizontal.normalized;
+            }
+
+            Vector3 start = transform.position;
+            Move(new Vector3(horizontal.x, -_definition.GroundStickSpeed, horizontal.z) * dt);
+
+            if (!_grounded)
+            {
+                // Slid off a ledge: keep the momentum and fall.
+                EndSlide();
+                return;
+            }
+
+            // Use the distance actually travelled, so sliding into a wall stops you.
+            Vector3 actual = (transform.position - start) / dt;
+            _velocity = new Vector3(actual.x, 0f, actual.z);
+
+            if (Flatten(_velocity).magnitude < _definition.SlideEndSpeed)
+            {
+                EndSlide();
+            }
+        }
+
+        private void EndSlide()
+        {
+            if (!_sliding)
+            {
+                return;
+            }
+
+            // The capsule stays short until there's room to stand (see Simulate).
+            _sliding = false;
+            _slideCooldownRemaining = _definition.SlideCooldown;
+            SlideEnded?.Invoke();
+        }
+
+        private void SetLowered(bool lowered)
+        {
+            _lowered = lowered;
+
+            // CharacterController can't be shorter than its own width.
+            float height = lowered
+                ? Mathf.Max(_definition.SlideHeight, _controller.radius * 2f)
+                : _standingHeight;
+
+            // Shrink from the top so your feet stay on the floor.
+            _controller.height = height;
+            _controller.center = _standingCenter + Vector3.down * ((_standingHeight - height) * 0.5f);
+        }
+
+        private bool HasStandingRoom()
+        {
+            float skin = _controller.skinWidth;
+            float radius = Mathf.Max(0.01f, _controller.radius - skin);
+            float sphereOffset = Mathf.Max(0f, _standingHeight * 0.5f - _controller.radius);
+            Vector3 center = transform.TransformPoint(_standingCenter);
+            Vector3 bottom = center + Vector3.down * sphereOffset + Vector3.up * skin;
+            Vector3 top = center + Vector3.up * sphereOffset;
+
+            return !Physics.CheckCapsule(bottom, top, radius, _environmentMask, QueryTriggerInteraction.Ignore);
         }
 
         // ------------------------------------------------------------------ Ground slam
@@ -648,6 +876,7 @@ namespace Roguelike.Player
             bool wasGrounded = _grounded;
 
             _hasWalkableContact = false;
+            _contactGroundNormal = Vector3.up;
             _hasBlockingHit = false;
             _blockingOpposition = 0f;
             _collectingHits = true;
@@ -696,6 +925,15 @@ namespace Roguelike.Player
                 _landedPending = true;
             }
 
+            if (_hasWalkableContact)
+            {
+                _groundNormal = _contactGroundNormal;
+            }
+            else if (!grounded)
+            {
+                _groundNormal = Vector3.up;
+            }
+
             _grounded = grounded;
         }
 
@@ -717,6 +955,12 @@ namespace Roguelike.Player
 
             if (normal.y >= _walkableNormalY && hit.point.y <= BottomSphereCenter.y)
             {
+                // With several floor contacts (e.g. where a ramp meets flat ground), use the flattest.
+                if (!_hasWalkableContact || normal.y > _contactGroundNormal.y)
+                {
+                    _contactGroundNormal = normal;
+                }
+
                 _hasWalkableContact = true;
             }
         }
@@ -729,6 +973,7 @@ namespace Roguelike.Player
             }
 
             _controller.Move(Vector3.down * distance);
+            _groundNormal = normal;
             return true;
         }
 
@@ -783,6 +1028,8 @@ namespace Roguelike.Player
 
         private void LaunchAirborne()
         {
+            // Any launch (jump, knockback, jump pad) ends a slide. Its speed carries into the air.
+            EndSlide();
             _forceAirborne = true;
             _grounded = false;
         }
