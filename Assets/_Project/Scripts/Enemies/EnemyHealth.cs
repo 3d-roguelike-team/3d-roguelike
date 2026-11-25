@@ -68,6 +68,17 @@ namespace Roguelike.Enemies
             HealthChanged?.Invoke(_currentHealth, MaxHealth);
         }
 
+        public void HealToFull()
+        {
+            if (IsDead)
+            {
+                return;
+            }
+
+            _currentHealth = MaxHealth;
+            HealthChanged?.Invoke(_currentHealth, MaxHealth);
+        }
+
         /// <summary>
         /// Reduces health and starts the death sequence when health reaches zero.
         /// </summary>
