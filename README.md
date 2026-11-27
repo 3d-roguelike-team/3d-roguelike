@@ -34,6 +34,6 @@ Fight through procedurally connected castle and dungeon rooms. Kit out your gun 
 | Jake Recharte (Tendie) | Level: rooms, doors. Meta: unlocks, save (temporary) |
 | James Shumate (JCoding8127) | Player: movement, Level: procedural generation (temporary) |
 | Matthew Nguyen (DiploMatt02) | Player: movement testing and review. UI: HUD, menus, shop UI (temporary) |
-| Micheal Saldivar (MSaldivar2005) | Core, Enemies, Combat (temporary) |
+| Michael Saldivar (MSaldivar2005) | Core, Enemies, Combat (temporary) |
 | Ross Hacket | Run: timer, difficulty, shop, death and reset (temporary) |
 
